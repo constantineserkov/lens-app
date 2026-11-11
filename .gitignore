@@ -1,0 +1,15 @@
+.DS_Store
+*.app/
+dist/
+build/
+*.dSYM/
+*.zip
+*.log
+__pycache__/
+.env
+.env.*
+*-test-results.json
+verification.json
+history.json
+queue.json
+Pending/
