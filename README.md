@@ -7,7 +7,15 @@ Lens is a small macOS menu bar app that sends screenshots to Codex CLI and shows
 **[Download Lens](https://github.com/constantineserkov/lens-app/releases/latest)** · macOS 14+ · Apple Silicon and Intel · [MIT](LICENSE)
 
 <p align="center">
+  <img src="Assets/lens-collapsed.png" width="162" alt="The collapsed Lens panel showing the answer 25.00">
+  <br>
+  <em>Collapsed: the answer at a glance.</em>
+</p>
+
+<p align="center">
   <img src="Assets/lens-screenshot.png" width="450" alt="The expanded Lens panel showing a sample answer and its explanation">
+  <br>
+  <em>Expanded: the same answer with its explanation.</em>
 </p>
 
 ## Getting started
