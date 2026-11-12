@@ -56,3 +56,5 @@ open Lens.app
 Use `./build.sh --universal` to build for both architectures. After a universal build, `./package.sh` writes the ZIP archive and `SHA256SUMS.txt` to `dist/`.
 
 Run `./test.sh` to check the queue, history, panel geometry, and retry behavior using a simulated CLI. After building, `python3 test_live.py` and `python3 test_batch_live.py` optionally check the app with a signed-in Codex CLI.
+
+Maintainers can run the build and tests on GitHub from **Actions → macOS checks → Run workflow**.
