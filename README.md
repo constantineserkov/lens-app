@@ -6,6 +6,10 @@ Lens is a small macOS menu bar app that sends screenshots to Codex CLI and shows
 
 **[Download Lens](https://github.com/constantineserkov/lens-app/releases/latest)** · macOS 14+ · Apple Silicon and Intel · [MIT](LICENSE)
 
+<p align="center">
+  <img src="Assets/lens-screenshot.png" width="450" alt="The expanded Lens panel showing a sample answer and its explanation">
+</p>
+
 ## Getting started
 
 1. Download and unzip the universal macOS archive from the release page. Move `Lens.app` to Applications and open it. The Lens icon appears in the menu bar.
