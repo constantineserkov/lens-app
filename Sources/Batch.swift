@@ -15,20 +15,20 @@ struct BatchAnswer:Codable {
         guard imageCount > 0,!items.isEmpty,Set(items.map(\.id)).count == items.count,
               Set(items.map(\.image_index)) == Set(1...imageCount),
               items.allSatisfy({ $0.part_index > 0 }) else {
-            throw LensError.message("В подборке получены не все ответы или нарушена нумерация. Снимки сохранены — повторите отправку.")
+            throw LensError.message("Some batch answers are missing or numbered incorrectly. Your screenshots are saved. Try again.")
         }
         for item in items { _ = try item.result.validated() }
         for index in 1...imageCount {
             let parts = items.filter { $0.image_index == index }.map(\.part_index).sorted()
-            guard parts == Array(1...parts.count) else { throw LensError.message("В ответах подборки пропущена задача. Повторите отправку.") }
+            guard parts == Array(1...parts.count) else { throw LensError.message("A question is missing from the batch results. Try again.") }
         }
         return BatchAnswer(items:items.sorted { ($0.image_index,$0.part_index) < ($1.image_index,$1.part_index) })
     }
-    var taskCountText:String { countText(items.count,one:"задача",few:"задачи",many:"задач") }
-    var answerCountText:String { countText(items.count,one:"ответ",few:"ответа",many:"ответов") }
+    var taskCountText:String { countText(items.count,one:"question",many:"questions") }
+    var answerCountText:String { countText(items.count,one:"answer",many:"answers") }
     var summary:Answer {
-        Answer(status:"ok",task:"Подборка · \(taskCountText)",answer:items.enumerated().map {
-            "\($0.offset+1). \($0.element.result.status == "ok" ? $0.element.result.answer : "Нужно уточнение")"
+        Answer(status:"ok",task:"Batch · \(taskCountText)",answer:items.enumerated().map {
+            "\($0.offset+1). \($0.element.result.status == "ok" ? $0.element.result.answer : "Needs clarification")"
         }.joined(separator:"\n"),format_note:"",solution:"",warnings:[])
     }
 }
@@ -56,7 +56,7 @@ final class QueueStore {
             let saved = try decoder.decode([PendingShot].self,from:Data(contentsOf:manifest))
             guard Set(saved.map(\.id)).count == saved.count,
                   saved.allSatisfy({ FileManager.default.isReadableFile(atPath:url(for:$0).path) }) else {
-                throw LensError.message("Не удалось прочитать очередь снимков. Существующие файлы сохранены.")
+                throw LensError.message("Could not load the screenshot queue. Existing files were kept.")
             }
             shots = saved
         }
@@ -74,7 +74,7 @@ final class QueueStore {
         if !loaded { try load() }
         guard let image = NSImage(contentsOf:file),image.size.width > 8,image.size.height > 8,
               let tiff = image.tiffRepresentation,let bitmap = NSBitmapImageRep(data:tiff),
-              let png = bitmap.representation(using:.png,properties:[:]) else { throw LensError.message("Не удалось прочитать изображение.") }
+              let png = bitmap.representation(using:.png,properties:[:]) else { throw LensError.message("Could not read the image.") }
         let shot = PendingShot(id:UUID(),createdAt:Date())
         try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true,attributes:[.posixPermissions:0o700])
         let destination = url(for:shot)
@@ -92,7 +92,6 @@ final class QueueStore {
     }
 }
 
-private func countText(_ count:Int,one:String,few:String,many:String)->String {
-    let word = (11...14).contains(count % 100) ? many : count % 10 == 1 ? one : (2...4).contains(count % 10) ? few : many
-    return "\(count) \(word)"
+private func countText(_ count:Int,one:String,many:String)->String {
+    "\(count) \(count == 1 ? one : many)"
 }

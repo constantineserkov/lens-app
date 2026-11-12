@@ -10,9 +10,9 @@ struct HistoryEntry: Codable, Identifiable {
     let batch: BatchAnswer?
 
     var title: String {
-        if let batch { return "Подборка · \(batch.taskCountText)" }
+        if let batch { return "Batch · \(batch.taskCountText)" }
         let compact = answer.task.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
-        return compact.isEmpty ? "Без названия" : String(compact.prefix(72)) + (compact.count > 72 ? "…" : "")
+        return compact.isEmpty ? "Untitled" : String(compact.prefix(72)) + (compact.count > 72 ? "…" : "")
     }
 }
 
@@ -34,7 +34,7 @@ final class HistoryStore {
             guard Set(decoded.map(\.id)).count == decoded.count,
                   Set(decoded.map(\.number)).count == decoded.count,
                   decoded.allSatisfy({ $0.number > 0 }) else {
-                throw LensError.message("Не удалось прочитать историю: повторяющиеся номера записей.")
+                throw LensError.message("Could not load history because some entry numbers are duplicated.")
             }
             entries = decoded.sorted { $0.number < $1.number }
         }

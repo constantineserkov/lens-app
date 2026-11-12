@@ -1,11 +1,16 @@
-# Изменения
+# Changelog
+
+## 0.0.2
+
+- Switched the app interface, messages, and generated explanations to English.
+- Translated the documentation and test fixtures into English.
 
 ## 0.0.1
 
-Первый публичный выпуск Lens для macOS.
+First public release of Lens for macOS.
 
-- Снимок экрана, выбранной области или импорт изображений.
-- Одиночные запросы и очередь с отправкой нескольких снимков за раз.
-- Короткие ответы, раскрываемые решения и локальная история.
-- Сохранение очереди после перезапуска и повторная отправка при восстановлении сети.
-- Универсальная сборка для Apple Silicon и Intel.
+- Full-screen and region capture, plus image import.
+- Immediate requests and a queue for sending multiple screenshots together.
+- Short answers, expandable explanations, and local history.
+- A persistent queue and automatic retries when the connection returns.
+- A universal build for Apple Silicon and Intel.

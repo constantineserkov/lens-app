@@ -6,9 +6,11 @@
     <key>CFBundleIdentifier</key><string>local.econlens.app</string>
     <key>CFBundleName</key><string>Lens</string>
     <key>CFBundleDisplayName</key><string>Lens</string>
+    <key>CFBundleDevelopmentRegion</key><string>en</string>
+    <key>CFBundleLocalizations</key><array><string>en</string></array>
     <key>CFBundleIconFile</key><string>AppIcon</string>
-    <key>CFBundleVersion</key><string>8</string>
-    <key>CFBundleShortVersionString</key><string>0.0.1</string>
+    <key>CFBundleVersion</key><string>9</string>
+    <key>CFBundleShortVersionString</key><string>0.0.2</string>
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>LSUIElement</key><true/>
     <key>NSHighResolutionCapable</key><true/>

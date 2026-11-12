@@ -6,14 +6,14 @@ func check(_ condition: @autoclosure () throws -> Bool, _ message: String) throw
 let root = FileManager.default.temporaryDirectory.appendingPathComponent("Lens-history-check-\(UUID())")
 try FileManager.default.createDirectory(at:root,withIntermediateDirectories:true)
 defer { try? FileManager.default.removeItem(at:root) }
-let a = Answer(status:"ok",task:"Вопрос 7.  Найти объём\nпри максимуме прибыли.",answer:"25,00",format_note:"Два знака",solution:"MR = MC\nQ = 25",warnings:[])
-let b = Answer(status:"ok",task:"Вопрос 8. Выберите индекс.",answer:"C",format_note:"0,25",solution:"20 / 80 = 0,25",warnings:[])
+let a = Answer(status:"ok",task:"Question 7.  Find the profit-maximizing\nquantity.",answer:"25.00",format_note:"Two decimal places",solution:"MR = MC\nQ = 25",warnings:[])
+let b = Answer(status:"ok",task:"Question 8. Choose the index.",answer:"C",format_note:"0.25",solution:"20 / 80 = 0.25",warnings:[])
 let store = HistoryStore(directory:root.appendingPathComponent("normal"))
 try check(try store.load().isEmpty,"New archive should be empty")
 try check(!FileManager.default.fileExists(atPath:store.file.path),"Reading should not create archive")
 let first = try store.append(a)
-try check(first.number == 1 && first.answer.answer == "25,00","First entry must retain exact formatted answer")
-try check(first.title.contains("Вопрос 7.") && !first.title.contains("\n"),"Title should preserve question number and normalize whitespace")
+try check(first.number == 1 && first.answer.answer == "25.00","First entry must retain exact formatted answer")
+try check(first.title.contains("Question 7.") && !first.title.contains("\n"),"Title should preserve question number and normalize whitespace")
 try check(first.model == "gpt-6.1-sol" && first.reasoning == "high","Model configuration must be pinned")
 let reloaded = HistoryStore(directory:store.directory)
 let entries = try reloaded.load()
@@ -107,17 +107,17 @@ DispatchQueue.global().asyncAfter(deadline:.now()+0.15) { cancelled.cancel() }
 let cancelStart = Date()
 var wasCancelled = false
  do { _ = try cancelled.solve(image:image,instructions:"") }
- catch { wasCancelled = error.localizedDescription.contains("отменён") }
+ catch { wasCancelled = error.localizedDescription.contains("canceled") }
 try check(wasCancelled && Date().timeIntervalSince(cancelStart) < 1,"Cancellation must interrupt offline waiting promptly")
 let authFailure = try fakeCLI("auth", "printf '%s\\n' '401 unauthorized' >&2; exit 1")
 statuses = []; var authRejected = false
  do { _ = try Solver(executable:authFailure,connection:{ true }).solve(image:image,instructions:"") { statuses.append($0) } }
- catch { authRejected = error.localizedDescription.contains("вход") }
+ catch { authRejected = error.localizedDescription.contains("Sign in") }
 try check(authRejected && !statuses.contains(.retrying(2)),"Authentication failures must not loop")
 let unavailable = try fakeCLI("unavailable", "printf '%s\\n' '503 connection failed' >&2; exit 1")
 statuses = []; var bounded = false
  do { _ = try Solver(executable:unavailable,connection:{ true },retryDelay:0.01).solve(image:image,instructions:"") { statuses.append($0) } }
- catch { bounded = error.localizedDescription.contains("4 попыток") }
+ catch { bounded = error.localizedDescription.contains("4 attempts") }
 try check(bounded && statuses.filter { $0 == .retrying(4) }.count >= 1 && !statuses.contains(.retrying(5)),"Online retries must stop after four attempts")
 print("PASS: live process stages, transient retry, disconnect/reconnect, offline cancellation, authentication errors, bounded retries")
 let serverWait = try fakeCLI("server-wait", """
@@ -156,7 +156,7 @@ var preserved = false
 try check(preserved && (try Data(contentsOf:brokenQueue.manifest)) == Data("broken".utf8),"An unreadable queue manifest must not be overwritten")
 let batch = BatchAnswer(items:[BatchItem(image_index:2,part_index:1,result:b),BatchItem(image_index:1,part_index:1,result:a)])
 let ordered = try batch.validated(imageCount:2)
-try check(ordered.items.map(\.result.answer) == ["25,00","C"],"Batch answers must follow screenshot order")
+try check(ordered.items.map(\.result.answer) == ["25.00","C"],"Batch answers must follow screenshot order")
 for malformed in [BatchAnswer(items:[BatchItem(image_index:1,part_index:1,result:a)]),BatchAnswer(items:[BatchItem(image_index:1,part_index:1,result:a),BatchItem(image_index:1,part_index:1,result:b)]),BatchAnswer(items:[BatchItem(image_index:1,part_index:2,result:a),BatchItem(image_index:2,part_index:1,result:b)])] {
     var refused = false
     do { _ = try malformed.validated(imageCount:2) } catch { refused = true }
@@ -167,7 +167,7 @@ _ = try archive.append(a) // Optional batch field remains compatible with previo
 let savedBatch = try archive.append(ordered.summary,batch:ordered)
 let savedItems = try HistoryStore(directory:archive.directory).load()
 try check(savedItems.count == 2 && savedItems[0].batch == nil && savedItems[1].batch?.items.count == 2,"Old and batch entries must coexist and survive restart")
-try check(savedBatch.answer.answer == "1. 25,00\n2. C","Batch copy summary must preserve all exact answers")
+try check(savedBatch.answer.answer == "1. 25.00\n2. C","Batch copy summary must preserve all exact answers")
 let encodedBatch = String(data:try JSONEncoder().encode(batch),encoding:.utf8)!
 let callFile = root.appendingPathComponent("batch-calls")
 let batchExecutable = root.appendingPathComponent("batch-cli")
@@ -192,13 +192,13 @@ try script.write(to:batchExecutable,atomically:true,encoding:.utf8)
 try FileManager.default.setAttributes([.posixPermissions:0o700],ofItemAtPath:batchExecutable.path)
 let oneRequest = try Solver(executable:batchExecutable,connection:{ true }).solveBatch(images:[image,image],instructions:"")
 let calls = try String(contentsOf:callFile,encoding:.utf8).split(separator:"\n")
-try check(calls.count == 1 && oneRequest.items.map(\.result.answer) == ["25,00","C"],"All images must be sent together in one CLI invocation")
+try check(calls.count == 1 && oneRequest.items.map(\.result.answer) == ["25.00","C"],"All images must be sent together in one CLI invocation")
 try check(restoredQueue.shots.count == 1,"Inference must not remove pending snapshots before history is saved")
 try restoredQueue.remove(Set(restoredQueue.shots.map(\.id)))
 try check(try QueueStore(directory:queueDirectory).load().isEmpty,"Successful queue cleanup must persist")
 print("PASS: persistent image queue, removal, invalid input, permissions, corruption protection, batch ordering/coverage, mixed history, one request for all images")
 
-let unreadable = Answer(status:"needs_input",task:"Неразборчивый снимок",answer:"",format_note:"",solution:"",warnings:["Нужен более чёткий снимок"])
+let unreadable = Answer(status:"needs_input",task:"Unreadable screenshot",answer:"",format_note:"",solution:"",warnings:["A clearer screenshot is needed"])
 let partial = try BatchAnswer(items:[BatchItem(image_index:1,part_index:1,result:a),BatchItem(image_index:1,part_index:2,result:b),BatchItem(image_index:2,part_index:1,result:unreadable)]).validated(imageCount:2)
-try check(partial.items.count == 3 && partial.summary.answer.hasSuffix("3. Нужно уточнение"),"Several questions per image and unreadable images must remain in the result list")
+try check(partial.items.count == 3 && partial.summary.answer.hasSuffix("3. Needs clarification"),"Several questions per image and unreadable images must remain in the result list")
 print("PASS: multiple questions per image and per-question needs_input without losing other answers")

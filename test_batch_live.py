@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parent
 APP = ROOT / 'Lens.app/Contents/MacOS/Lens'
 with tempfile.TemporaryDirectory(prefix='lens-batch-check-') as folder:
     files = []
-    expected = ['25,00', 'C', '1, 3, 5']
+    expected = ['25.00', 'C', '1, 3, 5']
     for index, flags in enumerate([[], ['--choice'], ['--multi-bullets']]):
         image = Path(folder) / f'{index+1}.png'
         subprocess.run([str(APP), '--make-fixture', str(image), *flags], check=True)

@@ -146,7 +146,7 @@ enum PanelPage { case solution, history, settings, queue }
     init(store:HistoryStore = HistoryStore(),queue:QueueStore = QueueStore()) {
         self.store = store; self.queue = queue
         do { pending = try queue.load() }
-        catch { historyIssue = "Не удалось прочитать очередь снимков. Существующие файлы сохранены." }
+        catch { historyIssue = "Could not load the screenshot queue. Existing files were kept." }
         if mode == .batch { page = .queue }
         if let point = UserDefaults.standard.array(forKey:"panelAnchor") as? [Double], point.count == 2,
            point.allSatisfy({ $0.isFinite }) { anchor = CGPoint(x:point[0],y:point[1]) }
@@ -154,7 +154,7 @@ enum PanelPage { case solution, history, settings, queue }
             expandedWidth = max(320,size[0]); expandedHeight = max(220,size[1])
         }
         do { history = try store.load() }
-        catch { historyIssue = "Не удалось прочитать историю. Существующий файл сохранён без изменений." }
+        catch { historyIssue = "Could not load history. The existing file was kept." }
     }
 
     func resize(animated:Bool = false) {
@@ -175,7 +175,7 @@ enum PanelPage { case solution, history, settings, queue }
         expandedWidth = min(max(320,expandedWidth),area.width-16)
         expandedHeight = min(max(220,expandedHeight),area.height-16)
         let point = anchor ?? CGPoint(x:area.maxX-10,y:area.minY+12)
-        let text = mode == .batch && !pending.isEmpty ? "\(pending.count) сним." : batchAnswer.map { $0.answerCountText } ?? (answer?.status == "ok" ? answer!.answer : "")
+        let text = mode == .batch && !pending.isEmpty ? "\(pending.count) queued" : batchAnswer.map { $0.answerCountText } ?? (answer?.status == "ok" ? answer!.answer : "")
         let answerWidth = (text as NSString).size(withAttributes:[.font:NSFont.monospacedDigitSystemFont(ofSize:21,weight:.medium)]).width
         let compactWidth:CGFloat = busy ? 206 : (text.isEmpty ? (message.isEmpty ? 88 : 126) : max(130,ceil(answerWidth)+104))
         let size = CGSize(width:expanded ? expandedWidth : min(compactWidth,area.width-16),height:expanded ? expandedHeight : 44)
@@ -254,7 +254,7 @@ enum PanelPage { case solution, history, settings, queue }
         else { page = .queue }
         guard CGPreflightScreenCaptureAccess() else {
             CGRequestScreenCaptureAccess()
-            message = "Разрешите запись экрана для Lens в настройках macOS, затем повторите захват."
+            message = "Allow screen recording for Lens in macOS System Settings, then try again."
             expanded = true; show(); return
         }
         capturing = true; hide()
@@ -265,7 +265,7 @@ enum PanelPage { case solution, history, settings, queue }
             p.standardOutput = FileHandle.nullDevice; p.standardError = FileHandle.nullDevice
             do {
                 try p.run(); p.waitUntilExit()
-                guard p.terminationStatus == 0,FileManager.default.fileExists(atPath:file.path) else { throw LensError.message("Захват не удался. Проверьте разрешение записи экрана.") }
+                guard p.terminationStatus == 0,FileManager.default.fileExists(atPath:file.path) else { throw LensError.message("Screenshot failed. Check the screen recording permission.") }
                 self.capturing = false; self.receive(file:file,removeAfter:true)
             } catch {
                 self.capturing = false; try? FileManager.default.removeItem(at:file)
@@ -315,7 +315,7 @@ enum PanelPage { case solution, history, settings, queue }
     func removeShot(_ shot:PendingShot) {
         guard !busy else { return }
         do { try queue.remove([shot.id]); pending = queue.shots; message = ""; resize(animated:true) }
-        catch { message = "Не удалось удалить снимок из очереди." }
+        catch { message = "Could not remove the screenshot from the queue." }
     }
     func sendBatch() {
         guard !busy,!capturing,!pending.isEmpty else { return }
@@ -344,8 +344,8 @@ enum PanelPage { case solution, history, settings, queue }
                         let entry = try self.store.append(batch.summary,batch:batch)
                         self.history = self.store.entries; self.selectedID = entry.id
                         do { try self.queue.remove(Set(shots.map(\.id))); self.pending = self.queue.shots; self.retryBatch = false }
-                        catch { self.message = "Ответы сохранены, но очистить очередь не удалось." }
-                    } catch { self.historyIssue = "Ответы получены, но сохранить историю не удалось. Снимки остались в очереди." }
+                        catch { self.message = "Answers were saved, but the queue could not be cleared." }
+                    } catch { self.historyIssue = "Could not save the answers to history. Your screenshots are still queued." }
                 case .failure(let error): self.message = error.localizedDescription
                 }
                 self.resize(animated:true); self.show()
@@ -378,7 +378,7 @@ enum PanelPage { case solution, history, settings, queue }
                     do {
                         let entry = try self.store.append(answer)
                         self.history = self.store.entries; self.selectedID = entry.id
-                    } catch { self.historyIssue = "Ответ получен, но сохранить историю не удалось. Проверьте доступ к папке приложения." }
+                    } catch { self.historyIssue = "Could not save the answer to history. Check access to the Lens data folder." }
                 case .failure(let error): self.message = error.localizedDescription
                 }
                 self.resize(animated:true); self.show()
@@ -391,7 +391,7 @@ enum PanelPage { case solution, history, settings, queue }
         guard let data = retryImage else { return }
         let file = FileManager.default.temporaryDirectory.appendingPathComponent("Lens-retry-\(UUID()).png")
         do { try data.write(to:file); solve(file:file,removeAfter:true) }
-        catch { message = "Не удалось подготовить сохранённый снимок." }
+        catch { message = "Could not prepare the saved screenshot." }
     }
     func cancel() { solver?.cancel() }
     func copy() {
@@ -408,14 +408,14 @@ enum PanelPage { case solution, history, settings, queue }
     }
     func overflowMenu() -> NSMenu {
         let menu = NSMenu()
-        let open = ClosureMenuItem("Открыть изображение…") { [weak self] in self?.openImage() }; open.isEnabled = !busy; menu.addItem(open)
-        let queueItem = ClosureMenuItem("Снимки для отправки · \(pending.count)") { [weak self] in self?.page = .queue; self?.expanded = true; self?.show() }
+        let open = ClosureMenuItem("Open Image…") { [weak self] in self?.openImage() }; open.isEnabled = !busy; menu.addItem(open)
+        let queueItem = ClosureMenuItem("Screenshot Queue · \(pending.count)") { [weak self] in self?.page = .queue; self?.expanded = true; self?.show() }
         menu.addItem(queueItem)
-        menu.addItem(ClosureMenuItem("Настройки") { [weak self] in self?.openSettings() })
-        menu.addItem(ClosureMenuItem("Вернуть в правый нижний угол") { [weak self] in self?.resetPosition() })
+        menu.addItem(ClosureMenuItem("Settings") { [weak self] in self?.openSettings() })
+        menu.addItem(ClosureMenuItem("Move Panel to Bottom Right") { [weak self] in self?.resetPosition() })
         menu.addItem(.separator())
-        menu.addItem(ClosureMenuItem("Свернуть в строку меню") { [weak self] in self?.hide() })
-        menu.addItem(ClosureMenuItem("Завершить Lens") { [weak self] in self?.solver?.cancel(); NSApp.terminate(nil) })
+        menu.addItem(ClosureMenuItem("Hide in Menu Bar") { [weak self] in self?.hide() })
+        menu.addItem(ClosureMenuItem("Quit Lens") { [weak self] in self?.solver?.cancel(); NSApp.terminate(nil) })
         return menu
     }
 }
@@ -459,7 +459,7 @@ struct LensView:View {
             .overlay(alignment:.top) {
                 if state.expanded && state.page == .solution {
                     DragSurface().frame(height:8).padding(.horizontal,18)
-                        .accessibilityLabel("Перетащить панель")
+                        .accessibilityLabel("Drag Panel")
                 }
             }
             .preferredColorScheme(.light)
@@ -475,25 +475,25 @@ struct LensView:View {
                 }
                 .overlay(alignment:.leading) {
                 HStack(spacing:2) {
-                    IconButton(symbol:"ellipsis",label:"Другие действия",help:"Открыть изображение, настройки и выход",menu:{ state.overflowMenu() }) {}.frame(width:36,height:36)
-                    IconButton(symbol:"clock.arrow.circlepath",label:"История запросов",help:"Сохранённые запросы: \(state.history.count)") {
+                    IconButton(symbol:"ellipsis",label:"More Actions",help:"Open an image, change settings, or quit",menu:{ state.overflowMenu() }) {}.frame(width:36,height:36)
+                    IconButton(symbol:"clock.arrow.circlepath",label:"Request History",help:"Saved requests: \(state.history.count)") {
                         if state.page == .history { state.page = .solution } else { state.openHistory() }
                     }.frame(width:36,height:36)
-                    IconButton(symbol:state.busy ? "stop.fill" : "doc.on.doc",label:state.busy ? "Отменить запрос" : "Копировать ответ",help:state.busy ? "Отменить запрос" : "Копировать краткий ответ",enabled:state.busy || state.answer?.status == "ok") {
+                    IconButton(symbol:state.busy ? "stop.fill" : "doc.on.doc",label:state.busy ? "Cancel Request" : "Copy Answer",help:state.busy ? "Cancel Request" : "Copy the short answer",enabled:state.busy || state.answer?.status == "ok") {
                         if state.busy { state.cancel() } else { state.copy() }
                     }.frame(width:36,height:36)
                     Spacer(minLength:0)
                     ModeSwitch(mode:state.mode,enabled:!state.busy && !state.capturing) { state.setMode($0) }
                         .frame(width:62,height:28)
-                    IconButton(symbol:"crop",label:"Выделить область",help:"Выделить область · ⌃⌥4",enabled:!state.busy) { state.select() }.frame(width:36,height:36)
+                    IconButton(symbol:"crop",label:"Capture Region",help:"Capture Region · ⌃⌥4",enabled:!state.busy) { state.select() }.frame(width:36,height:36)
                 }
                 .frame(width:max(0,width-88),height:36)
                 .opacity(max(0,(state.reveal-0.35)/0.65)).allowsHitTesting(state.expanded && state.reveal > 0.9)
                 .accessibilityHidden(!state.expanded)
             }
             .clipped().background(DragSurface())
-            IconButton(symbol:"camera",label:"Скриншот всего экрана",help:"Скриншот всего экрана · ⌃⌥3",enabled:!state.busy) { state.fullScreen() }.frame(width:36,height:36)
-            IconButton(symbol:"chevron.up",label:state.expanded ? "Свернуть панель" : "Раскрыть панель",help:state.expanded ? "Свернуть панель" : "Раскрыть решение и историю") { state.toggleExpanded() }
+            IconButton(symbol:"camera",label:"Capture Full Screen",help:"Capture Full Screen · ⌃⌥3",enabled:!state.busy) { state.fullScreen() }.frame(width:36,height:36)
+            IconButton(symbol:"chevron.up",label:state.expanded ? "Collapse Panel" : "Expand Panel",help:state.expanded ? "Collapse Panel" : "Show the solution and history") { state.toggleExpanded() }
                 .frame(width:36,height:36).rotationEffect(.degrees(Double(state.reveal)*180))
         }.padding(4).frame(width:width,height:44)
     }
@@ -504,16 +504,16 @@ struct LensView:View {
                 VStack(spacing:1) {
                     Text(state.progress.compact).font(.system(size:10,weight:.medium))
                         .foregroundStyle(state.progress.isWarning ? Color.orange : ink)
-                    Text("\(state.elapsed) с").font(.system(size:9)).monospacedDigit().foregroundStyle(.secondary)
+                    Text("\(state.elapsed) s").font(.system(size:9)).monospacedDigit().foregroundStyle(.secondary)
                 }
             }.frame(maxWidth:.infinity).help(state.progress.title)
         } else if state.mode == .batch && !state.pending.isEmpty {
             Button { state.page = .queue; state.expanded = true } label: {
                 HStack(spacing:5) {
                     Image(systemName:"square.stack").font(.system(size:11))
-                    Text("\(state.pending.count) сним.").font(.system(size:12,weight:.medium)).monospacedDigit()
+                    Text("\(state.pending.count) queued").font(.system(size:12,weight:.medium)).monospacedDigit()
                 }.frame(maxWidth:.infinity,minHeight:36).contentShape(Rectangle())
-            }.buttonStyle(.plain).padding(.leading,8).help("Открыть очередь и отправить все снимки")
+            }.buttonStyle(.plain).padding(.leading,8).help("Open the queue to send all screenshots")
         } else if let batch = state.batchAnswer {
             Button { state.page = .solution; state.expanded = true } label: {
                 Text(batch.answerCountText).font(.system(size:12,weight:.medium))
@@ -523,18 +523,18 @@ struct LensView:View {
             Button { state.page = .solution; state.expanded = true } label: {
                 Text(answer.answer).font(.system(size:21,weight:.medium,design:.rounded)).monospacedDigit()
                     .lineLimit(1).minimumScaleFactor(0.65).frame(maxWidth:.infinity,minHeight:36).contentShape(Rectangle())
-            }.buttonStyle(.plain).padding(.leading,9).help("Раскрыть решение")
+            }.buttonStyle(.plain).padding(.leading,9).help("Show Solution")
         } else if !state.message.isEmpty || state.answer?.status == "needs_input" {
-            IconButton(symbol:"exclamationmark",label:"Показать сообщение",help:"Показать сообщение или уточнение") { state.page = .solution; state.expanded = true }.frame(width:28,height:36)
+            IconButton(symbol:"exclamationmark",label:"Show Message",help:"Show a message or clarification") { state.page = .solution; state.expanded = true }.frame(width:28,height:36)
         }
     }
     func details(height:CGFloat)->some View {
         VStack(alignment:.leading,spacing:8) {
             if state.page != .solution {
-                Text(state.page == .history ? "История" : state.page == .queue ? "Снимки" : "Настройки")
+                Text(state.page == .history ? "History" : state.page == .queue ? "Screenshots" : "Settings")
                     .font(.system(size:11,weight:.medium)).foregroundStyle(.secondary)
                     .frame(maxWidth:.infinity,minHeight:22,alignment:.leading)
-                    .overlay(DragSurface().accessibilityLabel("Перетащить панель"))
+                    .overlay(DragSurface().accessibilityLabel("Drag Panel"))
             }
             ScrollView {
                 VStack(alignment:.leading,spacing:11) {
@@ -565,27 +565,27 @@ struct LensView:View {
             Text(state.progress.title).font(.system(size:13,weight:.medium))
                 .foregroundStyle(state.progress.isWarning ? Color.orange : ink)
             if state.progress == .offline {
-                Text(state.retryBatch ? "Подборка сохранена. После восстановления сети все снимки будут отправлены автоматически." : "Снимок сохранён. После восстановления сети он будет отправлен автоматически.")
+                Text(state.retryBatch ? "The batch is saved and will be sent automatically when the connection returns." : "The screenshot is saved and will be sent automatically when the connection returns.")
                     .font(.system(size:11)).foregroundStyle(.secondary)
             }
-            Text("\(state.elapsed) с").font(.system(size:11)).foregroundStyle(.secondary)
+            Text("\(state.elapsed) s").font(.system(size:11)).foregroundStyle(.secondary)
         } else if !state.message.isEmpty {
             Text(state.message).font(.system(size:12)).textSelection(.enabled)
-            if state.retryImage != nil || state.retryBatch { Button("Повторить") { state.retry() }.font(.system(size:11)) }
+            if state.retryImage != nil || state.retryBatch { Button("Retry") { state.retry() }.font(.system(size:11)) }
         } else {
-            Text("⌃⌥3 — весь экран\n⌃⌥4 — выделить область").font(.system(size:12)).lineSpacing(7).foregroundStyle(.secondary)
+            Text("⌃⌥3 — full screen\n⌃⌥4 — capture a region").font(.system(size:12)).lineSpacing(7).foregroundStyle(.secondary)
         }
     }
     @ViewBuilder var queueView:some View {
         if !state.message.isEmpty { Text(state.message).font(.system(size:11)).foregroundStyle(.orange) }
         if state.pending.isEmpty {
-            Text("Добавляйте снимки камерой или выделением области. Затем отправьте всю подборку.")
+            Text("Capture the screen or a region, then send all queued screenshots together.")
                 .font(.system(size:12)).foregroundStyle(.secondary)
-            Button("Открыть изображения…") { state.openImage() }.disabled(state.busy)
-            if state.mode != .batch { Button("Включить накопление") { state.setMode(.batch) } }
+            Button("Open Images…") { state.openImage() }.disabled(state.busy)
+            if state.mode != .batch { Button("Enable Batch Mode") { state.setMode(.batch) } }
         } else {
             Button { state.sendBatch() } label: {
-                Label("Отправить все · \(state.pending.count)",systemImage:"paperplane.fill")
+                Label("Send All · \(state.pending.count)",systemImage:"paperplane.fill")
                     .font(.system(size:12,weight:.medium)).frame(maxWidth:.infinity)
             }.buttonStyle(.borderedProminent).tint(ink).disabled(state.busy)
             ForEach(Array(state.pending.enumerated()),id:\.element.id) { index,shot in
@@ -594,9 +594,9 @@ struct LensView:View {
                         Image(nsImage:image).resizable().scaledToFit().frame(width:64,height:44)
                             .clipShape(RoundedRectangle(cornerRadius:5))
                     }
-                    Text("Снимок \(index+1)").font(.system(size:12))
+                    Text("Screenshot \(index+1)").font(.system(size:12))
                     Spacer(minLength:0)
-                    IconButton(symbol:"trash",label:"Удалить снимок \(index+1)",help:"Убрать этот снимок из подборки",enabled:!state.busy) {
+                    IconButton(symbol:"trash",label:"Remove Screenshot \(index+1)",help:"Remove this screenshot from the queue",enabled:!state.busy) {
                         state.removeShot(shot)
                     }.frame(width:30,height:30)
                 }.padding(7).background(RoundedRectangle(cornerRadius:9).fill(Color.black.opacity(0.025)))
@@ -608,7 +608,7 @@ struct LensView:View {
             ForEach(Array(batch.items.enumerated()),id:\.element.id) { index,item in
                 HStack(alignment:.firstTextBaseline,spacing:10) {
                     Text("\(index+1).").font(.system(size:11)).foregroundStyle(.secondary).frame(width:23,alignment:.leading)
-                    Text(item.result.status == "ok" ? item.result.answer : "Нужно уточнение")
+                    Text(item.result.status == "ok" ? item.result.answer : "Needs clarification")
                         .font(.system(size:21,weight:.medium,design:.rounded)).textSelection(.enabled)
                     Spacer(minLength:0)
                 }
@@ -622,24 +622,24 @@ struct LensView:View {
     }
     @ViewBuilder var historyView:some View {
         if state.history.isEmpty {
-            Text("Здесь появятся ответы и решения.").font(.system(size:12)).foregroundStyle(.secondary)
+            Text("Answers and solutions will appear here.").font(.system(size:12)).foregroundStyle(.secondary)
         } else {
             LazyVStack(spacing:6) {
                 ForEach(state.history.reversed()) { entry in
                     Button { state.choose(entry) } label: {
                         VStack(alignment:.leading,spacing:5) {
                             HStack {
-                                Text("Запрос \(entry.number)").font(.system(size:10,weight:.medium))
+                                Text("Request \(entry.number)").font(.system(size:10,weight:.medium))
                                 Spacer()
-                                Text(entry.createdAt.formatted(.dateTime.day().month(.abbreviated).hour().minute().locale(Locale(identifier:"ru_RU"))))
+                                Text(entry.createdAt.formatted(.dateTime.day().month(.abbreviated).hour().minute().locale(Locale(identifier:"en_US"))))
                                     .font(.system(size:9)).foregroundStyle(.secondary)
                             }
                             Text(entry.title).font(.system(size:11)).lineLimit(2).multilineTextAlignment(.leading)
-                            Text(entry.answer.status == "ok" ? entry.answer.answer : "Нужно уточнение").font(.system(size:16,weight:.medium,design:.rounded)).lineLimit(2)
+                            Text(entry.answer.status == "ok" ? entry.answer.answer : "Needs clarification").font(.system(size:16,weight:.medium,design:.rounded)).lineLimit(2)
                         }.padding(10).frame(maxWidth:.infinity,alignment:.leading)
                             .background(RoundedRectangle(cornerRadius:10).fill(Color.black.opacity(state.selectedID == entry.id ? 0.065 : 0.025)))
                             .contentShape(Rectangle())
-                    }.buttonStyle(.plain).accessibilityLabel("Запрос \(entry.number): \(entry.title). Ответ: \(entry.answer.answer)")
+                    }.buttonStyle(.plain).accessibilityLabel("Request \(entry.number): \(entry.title). Answer: \(entry.answer.answer)")
                 }
             }
         }
@@ -647,25 +647,25 @@ struct LensView:View {
     var settingsView:some View {
         VStack(alignment:.leading,spacing:8) {
             Text("GPT‑6.1 Sol · High reasoning").font(.system(size:12,weight:.medium))
-            Text("Пожелания к формату").font(.system(size:10)).foregroundStyle(.secondary)
-            TextField("Например: только число, десятичная запятая",text:$state.preferences,axis:.vertical)
+            Text("Answer Format Preferences").font(.system(size:10)).foregroundStyle(.secondary)
+            TextField("For example: number only, two decimal places",text:$state.preferences,axis:.vertical)
                 .lineLimit(2...5).onChange(of:state.preferences) { _,_ in state.saveSettings() }
-            Text("Путь к Codex CLI · необязательно").font(.system(size:10)).foregroundStyle(.secondary)
-            TextField("Автоматический поиск",text:$state.codexPath)
+            Text("Codex CLI Path (Optional)").font(.system(size:10)).foregroundStyle(.secondary)
+            TextField("Detect Automatically",text:$state.codexPath)
                 .onChange(of:state.codexPath) { _,_ in state.saveSettings() }
-            Button("Сохранить") { state.panel.makeFirstResponder(nil); state.saveSettings(); state.page = .solution }
+            Button("Save") { state.panel.makeFirstResponder(nil); state.saveSettings(); state.page = .solution }
         }.textFieldStyle(.roundedBorder).font(.system(size:11))
     }
     @ViewBuilder var actions:some View {
-        Button("Весь экран   ⌃⌥3") { state.fullScreen() }.disabled(state.busy)
-        Button("Выделить область   ⌃⌥4") { state.select() }.disabled(state.busy)
-        Button("Открыть изображение…") { state.openImage() }.disabled(state.busy)
+        Button("Capture Full Screen   ⌃⌥3") { state.fullScreen() }.disabled(state.busy)
+        Button("Capture Region   ⌃⌥4") { state.select() }.disabled(state.busy)
+        Button("Open Image…") { state.openImage() }.disabled(state.busy)
         Divider()
-        Button("История запросов") { state.openHistory() }
-        Button("Снимки для отправки · \(state.pending.count)") { state.page = .queue; state.expanded = true }
-        Button("Настройки") { state.openSettings() }
-        Button("Свернуть в строку меню") { state.hide() }
-        Button("Завершить Lens") { state.solver?.cancel(); NSApp.terminate(nil) }
+        Button("Request History") { state.openHistory() }
+        Button("Screenshot Queue · \(state.pending.count)") { state.page = .queue; state.expanded = true }
+        Button("Settings") { state.openSettings() }
+        Button("Hide in Menu Bar") { state.hide() }
+        Button("Quit Lens") { state.solver?.cancel(); NSApp.terminate(nil) }
     }
 }
 
@@ -682,7 +682,7 @@ final class SelectionPanel:NSPanel { override var canBecomeKey:Bool { true } }
             NSColor.white.withAlphaComponent(0.18).setFill(); rect.fill()
             NSColor.systemTeal.setStroke(); let path = NSBezierPath(rect:rect); path.lineWidth = 2; path.stroke()
         }
-        ("Выделите одну задачу целиком · Esc — отмена" as NSString).draw(at:NSPoint(x:35,y:bounds.height-65),withAttributes:[.font:NSFont.systemFont(ofSize:20,weight:.medium),.foregroundColor:NSColor.white])
+        ("Select an area to capture · Esc to cancel" as NSString).draw(at:NSPoint(x:35,y:bounds.height-65),withAttributes:[.font:NSFont.systemFont(ofSize:20,weight:.medium),.foregroundColor:NSColor.white])
     }
     override func mouseDown(with event:NSEvent) { window?.makeKey(); start = convert(event.locationInWindow,from:nil); current = start; needsDisplay = true }
     override func mouseDragged(with event:NSEvent) { current = convert(event.locationInWindow,from:nil); needsDisplay = true }
@@ -780,13 +780,13 @@ final class LensHostingView<Content:View>:NSHostingView<Content> {
         NSApp.setActivationPolicy(.accessory)
         let main = NSMenu()
         let application = NSMenu(title:"Lens")
-        let quitItem = application.addItem(withTitle:"Завершить Lens",action:#selector(quit),keyEquivalent:"q"); quitItem.target = self
+        let quitItem = application.addItem(withTitle:"Quit Lens",action:#selector(quit),keyEquivalent:"q"); quitItem.target = self
         let appItem = NSMenuItem(title:"Lens",action:nil,keyEquivalent:""); appItem.submenu = application; main.addItem(appItem)
-        let edit = NSMenu(title:"Правка")
-        for (title,action,key) in [("Отменить","undo:","z"),("Вырезать","cut:","x"),("Копировать","copy:","c"),("Вставить","paste:","v"),("Выделить всё","selectAll:","a")] {
+        let edit = NSMenu(title:"Edit")
+        for (title,action,key) in [("Undo","undo:","z"),("Cut","cut:","x"),("Copy","copy:","c"),("Paste","paste:","v"),("Select All","selectAll:","a")] {
             edit.addItem(withTitle:title,action:NSSelectorFromString(action),keyEquivalent:key)
         }
-        let editItem = NSMenuItem(title:"Правка",action:nil,keyEquivalent:""); editItem.submenu = edit; main.addItem(editItem)
+        let editItem = NSMenuItem(title:"Edit",action:nil,keyEquivalent:""); editItem.submenu = edit; main.addItem(editItem)
         NSApp.mainMenu = main
         let panel = LensPanel(contentRect:NSRect(x:0,y:0,width:88,height:44),styleMask:[.borderless,.nonactivatingPanel],backing:.buffered,defer:false)
         panel.backgroundColor = .clear; panel.isOpaque = false; panel.hasShadow = false
@@ -801,15 +801,15 @@ final class LensHostingView<Content:View>:NSHostingView<Content> {
         state.show()
         status = NSStatusBar.system.statusItem(withLength:NSStatusItem.squareLength)
         status.button?.image = NSImage(systemSymbolName:"camera.viewfinder",accessibilityDescription:"Lens")
-        status.button?.toolTip = "Lens · снимки и история ответов"
+        status.button?.toolTip = "Lens · Screenshots and Answer History"
         let menu = NSMenu()
-        menu.addItem(withTitle:"Показать / свернуть",action:#selector(toggle),keyEquivalent:"")
-        menu.addItem(withTitle:"Весь экран   ⌃⌥3",action:#selector(full),keyEquivalent:"")
-        menu.addItem(withTitle:"Выделить область   ⌃⌥4",action:#selector(select),keyEquivalent:"")
-        menu.addItem(withTitle:"История запросов",action:#selector(history),keyEquivalent:"")
-        menu.addItem(withTitle:"Открыть изображение…",action:#selector(openImage),keyEquivalent:"")
-        menu.addItem(withTitle:"Настройки",action:#selector(settings),keyEquivalent:"")
-        menu.addItem(.separator()); menu.addItem(withTitle:"Завершить Lens",action:#selector(quit),keyEquivalent:"q")
+        menu.addItem(withTitle:"Show / Hide Panel",action:#selector(toggle),keyEquivalent:"")
+        menu.addItem(withTitle:"Capture Full Screen   ⌃⌥3",action:#selector(full),keyEquivalent:"")
+        menu.addItem(withTitle:"Capture Region   ⌃⌥4",action:#selector(select),keyEquivalent:"")
+        menu.addItem(withTitle:"Request History",action:#selector(history),keyEquivalent:"")
+        menu.addItem(withTitle:"Open Image…",action:#selector(openImage),keyEquivalent:"")
+        menu.addItem(withTitle:"Settings",action:#selector(settings),keyEquivalent:"")
+        menu.addItem(.separator()); menu.addItem(withTitle:"Quit Lens",action:#selector(quit),keyEquivalent:"q")
         for item in menu.items { item.target = self }; status.menu = menu
         var spec = EventTypeSpec(eventClass:OSType(kEventClassKeyboard),eventKind:UInt32(kEventHotKeyPressed))
         InstallEventHandler(GetApplicationEventTarget(),{ _,event,context in
@@ -824,7 +824,7 @@ final class LensHostingView<Content:View>:NSHostingView<Content> {
         },1,&spec,Unmanaged.passUnretained(self).toOpaque(),nil)
         for (index,code) in [UInt32(kVK_ANSI_3),UInt32(kVK_ANSI_4),UInt32(kVK_ANSI_L)].enumerated() {
             let result = RegisterEventHotKey(code,UInt32(controlKey|optionKey),EventHotKeyID(signature:0x45434f4e,id:UInt32(index+1)),GetApplicationEventTarget(),0,&keys[index])
-            if result != noErr { state.message = "Горячая клавиша занята. Используйте меню приложения." }
+            if result != noErr { state.message = "A shortcut is already in use. Use the Lens menu instead." }
         }
         NotificationCenter.default.addObserver(forName:NSApplication.didChangeScreenParametersNotification,object:nil,queue:.main) { [weak self] _ in
             Task { @MainActor in self?.state.targetScreen = NSScreen.main; self?.state.resize() }
@@ -858,11 +858,11 @@ struct ModeSwitch:NSViewRepresentable {
     }
     func makeCoordinator()->Coordinator { Coordinator(changed) }
     func makeNSView(context:Context)->NSSegmentedControl {
-        let view = NSSegmentedControl(images:[NSImage(systemSymbolName:"bolt",accessibilityDescription:"Решать сразу")!,NSImage(systemSymbolName:"square.stack",accessibilityDescription:"Накапливать снимки")!],trackingMode:.selectOne,target:context.coordinator,action:#selector(Coordinator.select(_:)))
+        let view = NSSegmentedControl(images:[NSImage(systemSymbolName:"bolt",accessibilityDescription:"Send Immediately")!,NSImage(systemSymbolName:"square.stack",accessibilityDescription:"Queue Screenshots")!],trackingMode:.selectOne,target:context.coordinator,action:#selector(Coordinator.select(_:)))
         view.segmentStyle = .rounded; view.controlSize = .small
-        view.setToolTip("Решать каждый снимок сразу",forSegment:0)
-        view.setToolTip("Накапливать снимки и отправлять вместе",forSegment:1)
-        view.setAccessibilityLabel("Режим: сразу или накопление")
+        view.setToolTip("Send each screenshot immediately",forSegment:0)
+        view.setToolTip("Queue screenshots and send them together",forSegment:1)
+        view.setAccessibilityLabel("Capture Mode: Immediate or Batch")
         return view
     }
     func updateNSView(_ view:NSSegmentedControl,context:Context) {
@@ -888,9 +888,9 @@ struct BatchSolutionRow:View {
                     Spacer(minLength:0)
                 }.padding(.vertical,6).frame(maxWidth:.infinity,alignment:.leading).contentShape(Rectangle())
             }.buttonStyle(.plain)
-                .accessibilityLabel("Решение \(number): \(item.result.task)")
-                .accessibilityValue(expanded ? "Раскрыто" : "Свёрнуто")
-                .help(expanded ? "Свернуть решение" : "Раскрыть решение")
+                .accessibilityLabel("Solution \(number): \(item.result.task)")
+                .accessibilityValue(expanded ? "Expanded" : "Collapsed")
+                .help(expanded ? "Hide Solution" : "Show Solution")
             if expanded {
                 VStack(alignment:.leading,spacing:10) {
                     if item.result.status == "ok" {

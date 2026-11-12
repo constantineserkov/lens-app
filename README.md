@@ -2,37 +2,37 @@
 
 # Lens
 
-Lens — небольшое приложение для macOS, которое отправляет выбранный снимок в Codex CLI и показывает короткий ответ с пояснением. Можно обработать один снимок или собрать несколько в очередь и отправить их одним запросом.
+Lens is a small macOS menu bar app that sends screenshots to Codex CLI and shows short answers with explanations. Send one screenshot immediately or queue several and send them together.
 
-**[Скачать Lens 0.0.1](https://github.com/constantineserkov/lens-app/releases/tag/v0.0.1)** · macOS 14+ · Apple Silicon и Intel · [MIT](LICENSE)
+**[Download Lens](https://github.com/constantineserkov/lens-app/releases/latest)** · macOS 14+ · Apple Silicon and Intel · [MIT](LICENSE)
 
-## Запуск
+## Getting started
 
-1. Скачай и распакуй `Lens-0.0.1-macos-universal.zip` из релиза, перенеси `Lens.app` в «Программы» и открой. Значок Lens появится в строке меню macOS.
-2. Для обработки снимков нужен установленный [Codex CLI](https://developers.openai.com/codex/cli/) с активным входом и доступом к модели `gpt-6.1-sol`. Если Lens не найдёт CLI автоматически, укажи путь к нему в настройках Lens.
-3. Для захвата экрана разреши Lens запись экрана в настройках конфиденциальности macOS. Для импорта готовых изображений это разрешение не требуется.
+1. Download and unzip the universal macOS archive from the release page. Move `Lens.app` to Applications and open it. The Lens icon appears in the menu bar.
+2. Install and sign in to [Codex CLI](https://developers.openai.com/codex/cli/). Your account needs access to `gpt-6.1-sol`. If Lens cannot find the CLI, set its path in Settings.
+3. To capture your screen, grant Lens screen recording permission in macOS System Settings. Importing images does not require this permission.
 
-Сборка релиза подписана локальной подписью и не нотарифицирована Apple. Если macOS блокирует скачанное приложение, можно собрать его из исходников по инструкции ниже.
+The release is ad hoc signed and is not notarized by Apple. If macOS blocks the downloaded app, [build from source](#build-from-source).
 
-## Как пользоваться
+## Using Lens
 
-| Действие | Сочетание |
+| Action | Shortcut |
 | --- | --- |
-| Снимок экрана | ⌃⌥3 |
-| Снимок выбранной области | ⌃⌥4 |
-| Показать или спрятать панель | ⌃⌥L |
+| Capture the full screen | ⌃⌥3 |
+| Capture a region | ⌃⌥4 |
+| Show or hide the panel | ⌃⌥L |
 
-- **Молния** отправляет снимок сразу. **Стопка** складывает снимки в очередь до нажатия «Отправить все». В меню «⋯» также можно открыть готовые изображения.
-- В подборке сначала виден список ответов. Нажми на строку задачи, чтобы раскрыть пояснение. Обработанные подборки остаются в истории; очередь снимков сохраняется при перезапуске.
-- Стрелка сворачивает панель. Её можно перемещать, а в раскрытом виде — менять размер за край окна.
+- The **lightning bolt** sends the screenshot immediately. The **stack** queues screenshots until you select **Send All**. Use **Open Image…** in the **⋯** menu to import an existing image.
+- Batch results show a list of short answers first. Select a question to expand its explanation. Completed batches remain in History, and the screenshot queue survives a restart.
+- Use the chevron to collapse the panel. Drag the panel to move it, or drag its edge to resize it when expanded.
 
-## Данные
+## Data
 
-Снимки, которые ты отправляешь, и пожелания к формату ответа передаются через авторизованный Codex CLI. Пока снимки находятся в очереди, они хранятся на Mac; история ответов тоже локальная, в `~/Library/Application Support/Lens/`. При успешной обработке снимки удаляются из очереди.
+Lens sends the images you submit and your answer format preferences through your signed-in Codex CLI. Queued screenshots and answer history are stored on your Mac in `~/Library/Application Support/Lens/`. Screenshots are removed from the queue after successful processing and saving.
 
-## Сборка
+## Build from source
 
-Нужны macOS и Xcode Command Line Tools (`xcode-select --install`).
+You need macOS and the Xcode Command Line Tools (`xcode-select --install`).
 
 ```sh
 git clone https://github.com/constantineserkov/lens-app.git
@@ -41,6 +41,6 @@ cd lens-app
 open Lens.app
 ```
 
-`./build.sh --universal` собирает приложение для обеих архитектур. `./test.sh` проверяет очередь, историю, геометрию панели и поведение при сбоях сети на имитации CLI. Для отдельной проверки с реальным Codex CLI доступны `python3 test_live.py` и `python3 test_batch_live.py` после сборки.
+Use `./build.sh --universal` to build for both architectures. After a universal build, `./package.sh` writes the ZIP archive and `SHA256SUMS.txt` to `dist/`.
 
-После универсальной сборки `./package.sh` сохраняет ZIP и `SHA256SUMS.txt` в папку `dist/`.
+Run `./test.sh` to check the queue, history, panel geometry, and retry behavior using a simulated CLI. After building, `python3 test_live.py` and `python3 test_batch_live.py` optionally check the app with a signed-in Codex CLI.

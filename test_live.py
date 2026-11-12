@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parent
 APP = ROOT / "Lens.app/Contents/MacOS/Lens"
 results = []
 with tempfile.TemporaryDirectory(prefix="econ-lens-check-") as directory:
-    for name, expected, extra in [("monopoly", "25,00", []), ("lerner", "C", ["--choice"]), ("multiple_letters", "A, C, E", ["--multi-letters"]), ("multiple_bullets", "1, 3, 5", ["--multi-bullets"])]:
+    for name, expected, extra in [("monopoly", "25.00", []), ("lerner", "C", ["--choice"]), ("multiple_letters", "A, C, E", ["--multi-letters"]), ("multiple_bullets", "1, 3, 5", ["--multi-bullets"])]:
         image = Path(directory) / f"{name}.png"
         subprocess.run([str(APP), "--make-fixture", str(image), *extra], check=True)
         start = time.monotonic()
